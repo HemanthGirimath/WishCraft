@@ -5,13 +5,13 @@ import { useState, useEffect } from 'react';
 
 // Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyA8T0Tq6We22T6i8y-PXrn2kq7FGvMmZ_8",
-  authDomain: "expo-react-native-b3b53.firebaseapp.com",
-  projectId: "expo-react-native-b3b53",
-  storageBucket: "expo-react-native-b3b53.appspot.com",
-  messagingSenderId: "467133198832",
-  appId: "1:467133198832:web:adc29d63f8e5dd1f0a6d35",
-  measurementId: "G-KT3YE17DMF"
+  apiKey: process.env.apiKey,
+  authDomain: process.env.authDomain,
+  projectId: process.env.projectId,
+  storageBucket: process.env.storageBucket,
+  messagingSenderId: process.env.messagingSenderId,
+  appId: process.env.appId,
+  measurementId: process.env.measurementId
 };
 
 // Initialize Firebase
