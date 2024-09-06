@@ -31,6 +31,9 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "GROQ_API_KEY": "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"
     }
   }
 }
