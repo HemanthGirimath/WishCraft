@@ -12,7 +12,7 @@ export default function ResultScreen() {
       <Text style={styles.responseText}>Granted: {response}</Text>
       <TouchableOpacity
         style={styles.button}
-        onPress={() => router.push('/')}
+        onPress={() => router.push('/wish')}
       >
         <Text style={styles.buttonText}>Make Another Wish</Text>
       </TouchableOpacity>

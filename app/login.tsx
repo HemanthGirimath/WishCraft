@@ -7,25 +7,8 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [userDetails, setUserDetails] = useState<any>(null);
-  const { signInWithEmail, signUpWithEmail, user, getUserDetails } = useAuth();
+  const { signInWithEmail, signUpWithEmail, user} = useAuth();
   const router = useRouter();
-
-  useEffect(() => {
-    // console.log("User state changed:", user);
-    const fetchUserDetails = async () => {
-      if (user && getUserDetails) {
-        try {
-          const details = await getUserDetails(user.uid);
-        //   console.log("Fetched user details:", details);
-
-          setUserDetails(details);
-        } catch (error) {
-          console.error("Error fetching user details:", error);
-        }
-      }
-    };
-    fetchUserDetails();
-  }, [user, getUserDetails]);
 
   const handleEmailSignIn = async () => {
     console.log("Attempting sign in with:", email);

@@ -18,5 +18,21 @@ export default function Layout() {
     }
   }, [user, segments]);
 
-  return <Stack />;
+  return (
+    <Stack
+      screenOptions={{
+        headerTitle: "WishCraft",
+      }}
+    >
+      <Stack.Screen 
+        name="index" 
+        options={{ headerTitle: "WishCraft" }}
+      />
+      <Stack.Screen 
+        name="wish" 
+        options={{ headerTitle: "Make a Wish" }}
+      />
+
+    </Stack>
+  );
 }

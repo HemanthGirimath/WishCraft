@@ -2,6 +2,7 @@ import axios from 'axios';
 import Constants from 'expo-constants';
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_API_URL_AUDIO = 'https://api.groq.com/openai/v1/audio/transcriptions';
 const GROQ_API_KEY = Constants.expoConfig?.extra?.GROQ_API_KEY;
 
 if (!GROQ_API_KEY) {
@@ -33,5 +34,31 @@ export const interpretWish = async (wish: string): Promise<string> => {
   } catch (error) {
     console.error('Error calling Groq API:', error);
     return 'Sorry, I couldn\'t process that wish right now.';
+  }
+};
+
+export const speechToText = async (uri: string): Promise<string> => {
+  try {
+    // Create FormData and append the file
+    const formData = new FormData();
+    formData.append('file', {
+      uri: uri,
+      type: 'audio/wav',
+      name: 'audio.wav'
+    } as any);
+    formData.append('model', 'whisper-large-v3');
+    formData.append('language', 'en');
+
+    const response = await axios.post(GROQ_API_URL_AUDIO, formData, {
+      headers: {
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    return response.data.text;
+  } catch (error) {
+    console.error('Error calling Groq API:', error);
+    return 'Sorry, I couldn\'t process that audio right now.';
   }
 };
