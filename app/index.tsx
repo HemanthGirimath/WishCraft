@@ -1,9 +1,10 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, FlatList } from 'react-native';
+import React from 'react';
 import { useRouter } from 'expo-router';
+import { ScrollView, YStack, XStack, Text, Button } from 'tamagui';
+import { MaterialIcons } from '@expo/vector-icons';
 
 export default function HomeScreen() {
   const router = useRouter();
-
   const bulletPoints = [
     "Make wishes and see them come true, but be careful!",
     "Our AI genie is clever and mischievous",
@@ -15,90 +16,68 @@ export default function HomeScreen() {
     "Enjoy the surprise and humor in each wish interpretation"
   ];
 
-  const renderBulletPoint = ({ item }: { item: string }) => (
-    <View style={styles.bulletPointContainer}>
-      <Text style={styles.bullet}>•</Text>
-      <Text style={styles.bulletPointText}>{item}</Text>
-    </View>
-  );
-
   return (
-    <ScrollView contentContainerStyle={styles.scrollContainer}>
-      <View style={styles.topSection}>
-        <Text style={styles.title}>Welcome to WishCraft</Text>
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => router.push('/wish')}
+    <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+      <YStack alignItems="center" padding="$5" space="$4">
+        <MaterialIcons name="auto-awesome" size={48} color="#7c3aed" />
+        <Text 
+          fontSize="$8" 
+          fontWeight="bold" 
+          textAlign="center"
+          color="$color"
+          letterSpacing={1}
         >
-          <Text style={styles.buttonText}>Make a Wish</Text>
-        </TouchableOpacity>
-      </View>
+          Welcome to WishCraft
+        </Text>
+        
+        <Button
+          theme="accent"
+          size="$5"
+          borderRadius="$6"
+          paddingHorizontal="$6"
+          marginTop="$2"
+          pressStyle={{ scale: 0.97 }}
+          onPress={() => router.push('/wish')}
+          icon={<MaterialIcons name="stars" size={24} color="white" />}
+        >
+          <Text color="white" fontSize="$6" fontWeight="bold">
+            Make a Wish
+          </Text>
+        </Button>
+      </YStack>
 
-      <View style={styles.descriptionSection}>
-        <Text style={styles.descriptionTitle}>Guide to WishCraft</Text>
-        <FlatList
-          data={bulletPoints}
-          renderItem={renderBulletPoint}
-          keyExtractor={(item, index) => index.toString()}
-          scrollEnabled={false}
-        />
-      </View>
-
-      {/* Add more sections here if needed */}
+      <YStack 
+        padding="$4"
+        margin="$4"
+        borderRadius="$6"
+        borderWidth={2}
+        borderColor="$borderColor"
+        backgroundColor="$background"
+        space="$4"
+      >
+        <Text
+          fontSize="$6"
+          fontWeight="bold"
+          textAlign="center"
+          color="$color"
+        >
+          Guide to WishCraft
+        </Text>
+        
+        {bulletPoints.map((point, index) => (
+          <XStack key={index} space="$2" alignItems="flex-start">
+            <MaterialIcons name="auto-awesome" size={16} color="#7c3aed" />
+            <Text 
+              fontSize="$4" 
+              flex={1} 
+              color="$color"
+              opacity={0.9}
+            >
+              {point}
+            </Text>
+          </XStack>
+        ))}
+      </YStack>
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  scrollContainer: {
-    flexGrow: 1,
-  },
-  topSection: {
-    alignItems: 'center',
-    paddingTop: 60,
-    paddingBottom: 30,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    color: '#333',
-  },
-  button: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 30,
-    paddingVertical: 15,
-    borderRadius: 10,
-    elevation: 3,
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  descriptionSection: {
-    backgroundColor: '#e0e0e0',
-    padding: 20,
-    marginTop: 30,
-    borderRadius: 10,
-    marginHorizontal: 20,
-  },
-  descriptionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  bulletPointContainer: {
-    flexDirection: 'row',
-    marginBottom: 5,
-  },
-  bullet: {
-    fontSize: 16,
-    marginRight: 5,
-  },
-  bulletPointText: {
-    fontSize: 16,
-    flex: 1,
-  },
-});

@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, TextInput, StyleSheet, TouchableOpacity, Text, Button } from 'react-native';
+import { TouchableWithoutFeedback, Keyboard, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { interpretWish } from '../app/hooks/useAIServices';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
 import { speechToText } from '../app/hooks/useAIServices';
+import AdPlaceholder from '../app/AdPlaceholder';
+import { YStack, XStack, Button, Text, Input } from 'tamagui';
+import { auditWish } from '../app/hooks/useAIServices';
+import { MaterialIcons } from '@expo/vector-icons';
 
 export default function WishScreen() {
   const [wish, setWish] = useState('');
@@ -12,12 +16,59 @@ export default function WishScreen() {
   const router = useRouter();
   const [recording, setRecording] = useState<Audio.Recording | undefined>(undefined);
   const [permissionResponse, requestPermission] = Audio.usePermissions();
-
+  const [showAd, setShowAd] = useState(false);
+  const [hasAudited, setHasAudited] = useState(false);
+  const [isAuditMode, setIsAuditMode] = useState(false);
+  const [auditCount, setAuditCount] = useState(0);
 
   useEffect(() => {
-    // Load the wish count from AsyncStorage when the component mounts
-    loadWishCount();
-  }, []);
+    const initializeScreen = async () => {
+      await loadWishCount();
+      await loadAuditStatus();
+      await loadAuditMode();
+    };
+    
+    initializeScreen();
+  }, []); 
+
+  useEffect(() => {
+    if (!isAuditMode && wishCount >= 3) {
+      setShowAd(true);
+
+    }
+  }, [wishCount, isAuditMode]); 
+
+    const loadAuditMode = async () => {
+    try {
+      const storedAuditMode = await AsyncStorage.getItem('isAuditMode');
+      if (storedAuditMode !== null) {
+        setIsAuditMode(storedAuditMode === 'true');
+      }
+    } catch (error) {
+      console.error('Failed to load audit mode:', error);
+    }
+  };
+
+
+  const saveAuditMode = async (isAudit: boolean) => {
+    try {
+      await AsyncStorage.setItem('isAuditMode', isAudit.toString());
+    } catch (error) {
+      console.error('Failed to save audit mode:', error);
+    }
+  };
+
+  const loadWishCount = async () => {
+    try {
+      const storedCount = await AsyncStorage.getItem('wishCount');
+      if (storedCount !== null) {
+        setWishCount(parseInt(storedCount, 10));
+      }
+    } catch (error) {
+      console.error('Failed to load wish count:', error);
+    }
+  };
+
 
   async function startRecording() {
     try {
@@ -53,116 +104,222 @@ export default function WishScreen() {
     const uri = recording?.getURI();
     if (uri) {
       console.log('Recording stopped and stored at', uri);
-      const text = await speechToText(uri);
-      console.log('Transcription:', text);
-      setWish(text); // Set the transcribed text as the wish
-      if (text.trim() && wishCount < 3) {
-        const response = await interpretWish(text);
-        const newCount = wishCount + 1;
-        setWishCount(newCount);
-        saveWishCount(newCount);
-        router.push({ pathname: '/result', params: { wish: text, response } });
+      const transcribedText = await speechToText(uri);
+      console.log('Transcription:', transcribedText);
+      setWish(transcribedText);
+      
+      if (!isAuditMode && transcribedText.toLowerCase().includes('audit')) {
+        setIsAuditMode(true);
+        await saveAuditMode(true);
+        setWish('');
+        return;
+      }
+
+      if (transcribedText.trim()) {
+        if (isAuditMode) {
+          // Handle audit mode
+          const response = await interpretWish(transcribedText);
+          router.push({ 
+            pathname: '/result', 
+            params: { 
+              wish: transcribedText, 
+              response,
+              isAudit: '1'
+            } 
+          });
+        } else if (wishCount < 3) {
+          // Handle normal wish
+          const response = await interpretWish(transcribedText);
+          const newCount = wishCount + 1;
+          await saveWishCount(newCount); 
+          router.push({ 
+            pathname: '/result', 
+            params: { 
+              wish: transcribedText, 
+              response,
+              isAudit: '0'
+            } 
+          });
+        }
       }
     }
   }
 
-  const loadWishCount = async () => {
+  const loadAuditStatus = async () => {
     try {
-      const storedCount = await AsyncStorage.getItem('wishCount');
-      if (storedCount !== null) {
-        setWishCount(parseInt(storedCount, 10));
+      const storedAuditCount = await AsyncStorage.getItem('auditCount');
+      if (storedAuditCount !== null) {
+        setAuditCount(parseInt(storedAuditCount, 10));
       }
     } catch (error) {
-      console.error('Failed to load wish count:', error);
+      console.error('Failed to load audit count:', error);
     }
   };
 
   const saveWishCount = async (count: number) => {
     try {
       await AsyncStorage.setItem('wishCount', count.toString());
+      setWishCount(count); // Update state immediately after saving
     } catch (error) {
       console.error('Failed to save wish count:', error);
     }
   };
 
+
   const handleSubmit = async () => {
-    if (wish.trim() && wishCount < 3) {
-      const response = await interpretWish(wish);
-      const newCount = wishCount + 1;
-      setWishCount(newCount);
-      saveWishCount(newCount);
-      router.push({ pathname: '/result', params: { wish, response } });
+    if (wish.trim()) {
+      try {
+        if (!isAuditMode && wish.toLowerCase().includes('audit')) {
+          setIsAuditMode(true);
+          setWish('');
+          return;
+        }
+        
+        if (isAuditMode) {
+          const response = await auditWish(wish);
+          router.push({ 
+            pathname: '/result', 
+            params: { wish, response, isAudit: '1' }
+          });
+        } else {
+          const response = await interpretWish(wish);
+          const newCount = wishCount + 1;
+          setWishCount(newCount);
+          await AsyncStorage.setItem('wishCount', newCount.toString());
+          router.push({ 
+            pathname: '/result', 
+            params: { wish, response, isAudit: '0' }
+          });
+        }
+        setWish('');
+      } catch (error) {
+        console.error('Error processing wish:', error);
+      }
     }
   };
 
-  return (
-    <View style={styles.container}>
-      {wishCount >= 3 ? (
-        <View style={styles.fullScreenMessage}>
-          <Text style={styles.fullScreenText}>Wish limit reached</Text>
-        </View>
-      ) : (
-        <><View>
-            <TextInput
-              style={styles.input}
+  const handleDoneAuditing = async () => {
+    setIsAuditMode(false);
+    await saveAuditMode(false);  
+    setWish('');
+  };
+  const handleAdClose = async () => {
+    setShowAd(false);
+    await saveWishCount(0); // Use saveWishCount instead of separate AsyncStorage and setState calls
+  };
+
+  const resetWishCount = async () => {
+    setWishCount(0);
+    await AsyncStorage.setItem('wishCount', '0');
+  };
+
+// resetWishCount();
+
+return (
+  <KeyboardAvoidingView 
+    behavior={Platform.OS === "ios" ? "padding" : "height"}
+    style={{ flex: 1 }}
+  >
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <YStack f={1} padding="$4" backgroundColor="$background">
+        {showAd ? (
+          <AdPlaceholder onClose={handleAdClose} />
+        ) : isAuditMode ? (
+          <YStack space="$4">
+            <YStack alignItems="center" space="$3">
+              <MaterialIcons name="analytics" size={32} color="#7c3aed" />
+              <Text fontSize="$6" fontWeight="bold" textAlign="center">
+                Wish Audit Mode
+              </Text>
+              <Text fontSize="$4" color="$gray10" textAlign="center">
+                Test your wishes to see how they might be interpreted
+              </Text>
+            </YStack>
+
+            <Input
+              placeholder="Enter a test wish..."
+              value={wish}
+              onChangeText={setWish}
+              multiline
+              minHeight={100}
+              fontSize={20}
+              borderWidth={2}
+              borderRadius="$6"
+              padding="$3"
+            />
+            <Button
+              onPress={handleSubmit}
+              backgroundColor="$blue10"
+              size="$5"
+              borderRadius="$6"
+            >
+              <Text color="white" fontWeight="bold">Analyze Wish</Text>
+            </Button>
+            
+            <Button 
+              onPress={handleDoneAuditing}
+              size="$5"
+              borderRadius="$6"
+              borderWidth={2}
+            >
+              <Text fontWeight="bold">Exit Audit Mode</Text>
+            </Button>
+          </YStack>
+        ) : (
+          <YStack space="$4">
+            <Input
               placeholder="Enter your wish..."
               value={wish}
               onChangeText={setWish}
-              multiline />
-            <TouchableOpacity
-              style={styles.button}
+              multiline
+              minHeight={200}
+              fontSize={20}
+              borderWidth={2}
+              borderRadius="$6"
+              padding="$3"
+            />
+            <Button
               onPress={handleSubmit}
               disabled={wishCount >= 3}
+              backgroundColor="$purple10"
+              size="$5"
+              borderRadius="$6"
+              opacity={wishCount >= 3 ? 0.5 : 1}
+              theme={'accent'}
             >
-              <Text style={styles.buttonText}>Submit Wish</Text>
-            </TouchableOpacity>
-            <Text style={styles.wishCount}>Wishes: {wishCount}/3</Text>
-          </View><View style={styles.container}>
-              <Button
-                title={recording ? 'Stop Recording' : 'Start Recording'}
-                onPress={recording ? stopRecording : startRecording} />
-            </View></>
-      )}
-    </View>
-  );
-}
+              <Text color="white" fontWeight="bold">Submit Wish</Text>
+            </Button>
+            
+            <Text fontSize="$4" textAlign="center" opacity={0.8}>
+              Wishes Remaining: {3 - wishCount}/3
+            </Text>
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-    backgroundColor: '#f0f0f0',
-  },
-  input: {
-    backgroundColor: 'white',
-    padding: 10,
-    borderRadius: 5,
-    marginBottom: 20,
-    minHeight: 100,
-  },
-  button: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 5,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 18,
-  },
-  fullScreenMessage: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  fullScreenText: {
-    fontSize: 24,
-    color: 'red',
-  },
-  wishCount: {
-    fontSize: 18,
-    color: 'gray',
-    marginBottom: 20,
-  },
-});
+            {recording ? (
+              <Button
+                onPress={stopRecording}
+                backgroundColor="$purple10"
+                size="$5"
+                borderRadius="$6"
+                icon={<MaterialIcons name="mic-off" size={24} color="white" />}
+              >
+                <Text color="white" fontWeight="bold">Stop Recording</Text>
+              </Button>
+            ) : (
+              <Button
+                onPress={startRecording}
+                backgroundColor="$purple10"
+                size="$5"
+                borderRadius="$6"
+                icon={<MaterialIcons name="mic" size={24} color="white" />}
+                theme={'accent'}
+              >
+                <Text color="white" fontWeight="bold">Start Recording</Text>
+              </Button>
+            )}
+          </YStack>
+        )}
+      </YStack>
+    </TouchableWithoutFeedback>
+  </KeyboardAvoidingView>
+);
+}
